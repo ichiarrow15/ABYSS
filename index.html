@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <title>呪われたダンジョン（5層41階建て）</title>
 <style>
+  html, body {
+    overflow: hidden;
+}
+
   body {
     margin: 0;
     background: #111;
@@ -348,6 +352,10 @@
 </div>
 
 <script>
+  document.body.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+}, { passive: false });
+
 /*** データ定義 ***/
 const LAYER_THEMES = [
   { name: "層1：朽ちた石窟", class: "theme1" },
