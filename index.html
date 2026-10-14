@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>呪われたダンジョン（5層41階建て）</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font-family: "Yu Gothic", system-ui, sans-serif;
+  }
+  #game {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    grid-template-rows: 80px 1fr 160px;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+  header {
+    grid-column: 1 / 4;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    box-sizing: border-box;
+    border-bottom: 2px solid #444;
+  }
+  header h1 {
+    font-family: "Cinzel", "Times New Roman", serif;
+    font-size: 20px;
+    margin: 0;
+    letter-spacing: 2px;
+  }
+  #dungeonInfo {
+    font-size: 13px;
+  }
+  #leftPanel {
+    grid-row: 2 / 4;
+    grid-column: 1 / 2;
+    background: #1a1a1a;
+    border-right: 2px solid #444;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #centerPanel {
+    height: 750px;   /* ← 好きな高さに変更 */
+    grid-column: 2 / 3;
+    background: #101010;
+    padding: 8px;
+    box-sizing: border-box;
+    border-right: 2px solid #444;
+    border-left: 2px solid #444;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #rightPanel {
+    grid-row: 2 / 4;
+    grid-column: 3 / 4;
+    background: #1a1a1a;
+    border-left: 2px solid #444;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #bottomPanel {
+    grid-row: 2 / 4;
+    grid-column: 2 / 3;
+    background: #181818;
+    border-top: 2px solid #444;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .panelTitle {
+    font-size: 13px;
+    border-bottom: 1px solid #555;
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+    letter-spacing: 1px;
+  }
+  .allyList, .enemyList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .ally, .enemy {
+    border: 1px solid #555;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .hpBarOuter {
+    width: 100%;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 2px;
+  }
+  .hpBarInner {
+    height: 100%;
+    background: #3cb371;
+  }
+  .mapGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 4px;
+    font-size: 11px;
+  }
+  .mapCell {
+    border: 1px solid #555;
+    border-radius: 4px;
+    text-align: center;
+    padding: 4px 0;
+  }
+  .mapCell.current {
+    background: #ffd70033;
+    border-color: #ffd700;
+  }
+  .mapCell.boss {
+    background: #8b000033;
+    border-color: #ff4500;
+  }
+
+  #roomChoices {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  .roomButton {
+    flex: 1;
+    padding: 6px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #777;
+    background: #222;
+    color: #eee;
+    cursor: pointer;
+  }
+  .roomButton:hover {
+    background: #333;
+  }
+
+  #log {
+    height: 150px;        /* ← ここで縦サイズを調整 */
+    font-size: 11px;
+    background: #101010;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 4px;
+    overflow-y: auto;
+  }
+
+  #commandArea {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+  }
+  .commandButton {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #777;
+    background: #222;
+    color: #eee;
+    cursor: pointer;
+  }
+  .commandButton:hover {
+    background: #333;
+  }
+  #commandTimer {
+    font-size: 12px;
+  }
+
+  #inventory {
+    flex: 1;
+    font-size: 11px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 4px;
+    overflow-y: auto;
+    background: #101010;
+  }
+  .itemEntry {
+    border-bottom: 1px solid #333;
+    padding: 2px 0;
+  }
+  .itemEntry span.type {
+    color: #87cefa;
+  }
+
+  #curseSelectOverlay,
+  #dialogOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .dialog {
+    background: #222;
+    border: 2px solid #888;
+    border-radius: 8px;
+    padding: 12px;
+    width: 520px;
+    max-height: 80vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .dialogTitle {
+    font-size: 15px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 4px;
+  }
+  .dialogBody {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .dialogButtons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .dialogButton {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #777;
+    background: #333;
+    color: #eee;
+    cursor: pointer;
+  }
+  .dialogButton:hover {
+    background: #444;
+  }
+
+  .theme1 { background: radial-gradient(circle at top, #2f4f4f 0, #000 60%); }
+  .theme2 { background: radial-gradient(circle at top, #4b0082 0, #000 60%); }
+  .theme3 { background: radial-gradient(circle at top, #8b4513 0, #000 60%); }
+  .theme4 { background: radial-gradient(circle at top, #006400 0, #000 60%); }
+  .theme5 { background: radial-gradient(circle at top, #800000 0, #000 60%); }
+
+  .attr-fire { color: #ff6347; }
+  .attr-water { color: #00bfff; }
+  .attr-grass { color: #7cfc00; }
+</style>
+</head>
+<body>
+<div id="game" class="theme1">
+  <header>
+    <h1>呪われたダンジョン</h1>
+    <div id="dungeonInfo"></div>
+  </header>
+
+  <div id="leftPanel">
+    <div>
+      <div class="panelTitle">味方パーティ</div>
+      <div class="allyList" id="allyList"></div>
+    </div>
+    <div>
+      <div class="panelTitle">敵情報</div>
+      <div class="enemyList" id="enemyList"></div>
+    </div>
+    <div>
+      <div class="panelTitle">マップ（層内10階）</div>
+      <div class="mapGrid" id="mapGrid"></div>
+    </div>
+  </div>
+
+  <div id="centerPanel">
+    <div>
+      <div class="panelTitle">現在の間</div>
+      <div id="currentRoomDesc" style="font-size:13px;"></div>
+      <div id="roomChoices"></div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+      <div class="panelTitle">戦闘・イベントログ</div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <div id="rightPanel">
+    <div>
+      <div class="panelTitle">インベントリ</div>
+      <div id="inventory"></div>
+    </div>
+    <div>
+      <div class="panelTitle">呪い・資源</div>
+      <div id="statusInfo" style="font-size:12px;"></div>
+    </div>
+  </div>
+
+  <div id="bottomPanel">
+    <div class="panelTitle">戦闘コマンド</div>
+    <div id="commandArea">
+      <button class="commandButton" data-cmd="attack">攻撃</button>
+      <button class="commandButton" data-cmd="defend">防御</button>
+      <button class="commandButton" data-cmd="heal">回復</button>
+      <span id="commandTimer">待機中</span>
+    </div>
+  </div>
+</div>
+
+<!-- 呪い選択 -->
+<div id="curseSelectOverlay">
+  <div class="dialog">
+    <div class="dialogTitle">ダンジョンの呪いを選択</div>
+    <div class="dialogBody">
+      <p>このダンジョンには強力な呪いがかかっている。ひとつ選んで挑むこと。</p>
+      <ul>
+        <li><b>魂の渇望</b>：攻撃＋15％、防御－10％</li>
+        <li><b>死恐怖症</b>：防御・回復＋10％、攻撃－25％</li>
+        <li><b>黄金の呪い</b>：商人の間で獲得金貨＋5％、敵HP＋5％</li>
+      </ul>
+    </div>
+    <div class="dialogButtons">
+      <button class="dialogButton" data-curse="soul">魂の渇望</button>
+      <button class="dialogButton" data-curse="death">死恐怖症</button>
+      <button class="dialogButton" data-curse="gold">黄金の呪い</button>
+    </div>
+  </div>
+</div>
+
+<!-- 汎用ダイアログ -->
+<div id="dialogOverlay">
+  <div class="dialog">
+    <div class="dialogTitle" id="dialogTitle"></div>
+    <div class="dialogBody" id="dialogBody"></div>
+    <div class="dialogButtons" id="dialogButtons"></div>
+  </div>
+</div>
+
+<script>
+/*** データ定義 ***/
+const LAYER_THEMES = [
+  { name: "層1：朽ちた石窟", class: "theme1" },
+  { name: "層2：紫紺の霧路", class: "theme2" },
+  { name: "層3：焦げた溶岩洞", class: "theme3" },
+  { name: "層4：深緑の迷林", class: "theme4" },
+  { name: "層5：血塗られた王座", class: "theme5" }
+];
+
+const ROOM_TYPES = ["戦闘", "焚火", "商人", "宝箱"];
+const ATTRS = ["fire", "water", "grass"];
+
+const gameState = {
+  layer: 1,
+  floor: 1, // 1〜10（ただし5層は1階がボス）
+  maxLayer: 5,
+  gold: 100,
+  curse: null,
+  allies: [],
+  enemies: [],
+  inventory: [],
+  permanentEffects: [],
+  battle: {
+    inBattle: false,
+    commandWindowOpen: false,
+    commandTimer: null,
+    commandDeadline: 0,
+    enemyCommand: null,
+    lastCommand: null
+  }
+};
+
+/*** アイテム定義（50個） ***/
+const ITEMS = [
+  // 永続系
+  { id: 1, name: "古びた剣", type: "永続", desc: "味方全員の攻撃＋5％", effect: { atkPct: 0.05 } },
+  { id: 2, name: "鉄の盾", type: "永続", desc: "味方全員の防御＋5％", effect: { defPct: 0.05 } },
+  { id: 3, name: "癒しの香", type: "永続", desc: "戦闘終了時HP自動回復＋3％", effect: { postHealPct: 0.03 } },
+  { id: 4, name: "俊足の靴", type: "永続", desc: "コマンド猶予時間＋1秒", effect: { cmdBonusSec: 1 } },
+  { id: 5, name: "堅牢な鎧", type: "永続", desc: "被ダメージ－5％", effect: { dmgTakenPct: -0.05 } },
+  { id: 6, name: "戦士の紋章", type: "永続", desc: "攻撃特化キャラの攻撃＋10％", effect: { atkRoleBonus: "attack" } },
+  { id: 7, name: "守護者の紋章", type: "永続", desc: "防御特化キャラの防御＋10％", effect: { defRoleBonus: "defense" } },
+  { id: 8, name: "司祭の紋章", type: "永続", desc: "回復特化キャラの回復＋10％", effect: { healRoleBonus: "heal" } },
+  { id: 9, name: "金運のお守り", type: "永続", desc: "獲得金貨＋10％", effect: { goldGainPct: 0.10 } },
+  { id:10, name: "呪詛耐性の護符", type: "永続", desc: "敵のデバフ効果－20％", effect: { debuffResistPct: 0.20 } },
+
+  // 使用系（階層内のみ）
+  { id:11, name: "小さな回復薬", type: "使用", desc: "味方全員のHPを5％回復", effect: { healAllPct: 0.05 } },
+  { id:12, name: "大きな回復薬", type: "使用", desc: "味方全員のHPを15％回復", effect: { healAllPct: 0.15 } },
+  { id:13, name: "攻撃強化の巻物", type: "使用", desc: "その階層中、攻撃＋10％", effect: { atkPctTemp: 0.10 } },
+  { id:14, name: "防御強化の巻物", type: "使用", desc: "その階層中、防御＋10％", effect: { defPctTemp: 0.10 } },
+  { id:15, name: "癒しの歌の楽譜", type: "使用", desc: "その階層中、回復＋10％", effect: { healPctTemp: 0.10 } },
+  { id:16, name: "炎の護符", type: "使用", desc: "次の戦闘で火属性ダメージ＋20％", effect: { attrBoost: "fire", boostPct: 0.20 } },
+  { id:17, name: "水の護符", type: "使用", desc: "次の戦闘で水属性ダメージ＋20％", effect: { attrBoost: "water", boostPct: 0.20 } },
+  { id:18, name: "草の護符", type: "使用", desc: "次の戦闘で草属性ダメージ＋20％", effect: { attrBoost: "grass", boostPct: 0.20 } },
+  { id:19, name: "幸運のコイン", type: "使用", desc: "次の宝箱報酬が1つ追加される", effect: { extraChestChoice: 1 } },
+  { id:20, name: "商人の割引券", type: "使用", desc: "その階層中、商人の価格－20％", effect: { merchantDiscountPct: 0.20 } },
+
+  // 付与系（属性・ステータス）
+  { id:21, name: "火の欠片＋1", type: "付与", desc: "対象に火属性＋1を付与", effect: { attr: "fire", power: 1 } },
+  { id:22, name: "火の欠片＋2", type: "付与", desc: "対象に火属性＋2を付与", effect: { attr: "fire", power: 2 } },
+  { id:23, name: "火の欠片＋3", type: "付与", desc: "対象に火属性＋3を付与", effect: { attr: "fire", power: 3 } },
+  { id:24, name: "水の欠片＋1", type: "付与", desc: "対象に水属性＋1を付与", effect: { attr: "water", power: 1 } },
+  { id:25, name: "水の欠片＋2", type: "付与", desc: "対象に水属性＋2を付与", effect: { attr: "water", power: 2 } },
+  { id:26, name: "水の欠片＋3", type: "付与", desc: "対象に水属性＋3を付与", effect: { attr: "water", power: 3 } },
+  { id:27, name: "草の欠片＋1", type: "付与", desc: "対象に草属性＋1を付与", effect: { attr: "grass", power: 1 } },
+  { id:28, name: "草の欠片＋2", type: "付与", desc: "対象に草属性＋2を付与", effect: { attr: "grass", power: 2 } },
+  { id:29, name: "草の欠片＋3", type: "付与", desc: "対象に草属性＋3を付与", effect: { attr: "grass", power: 3 } },
+  { id:30, name: "生命の指輪", type: "付与", desc: "最大HP＋10％", effect: { maxHpPct: 0.10 } },
+  { id:31, name: "怒りの指輪", type: "付与", desc: "攻撃＋15％、防御－5％", effect: { atkPct: 0.15, defPct: -0.05 } },
+  { id:32, name: "守護の指輪", type: "付与", desc: "防御＋15％、攻撃－5％", effect: { defPct: 0.15, atkPct: -0.05 } },
+  { id:33, name: "癒しの指輪", type: "付与", desc: "回復＋15％", effect: { healPct: 0.15 } },
+  { id:34, name: "迅速の指輪", type: "付与", desc: "行動速度＋10％（ダメージ微増）", effect: { speedPct: 0.10 } },
+  { id:35, name: "重厚な指輪", type: "付与", desc: "防御＋10％、行動速度－5％", effect: { defPct: 0.10, speedPct: -0.05 } },
+
+  // その他永続・使用混合
+  { id:36, name: "古文書の断片", type: "永続", desc: "ボス戦で与ダメージ＋5％", effect: { bossDmgPct: 0.05 } },
+  { id:37, name: "黒い羽根", type: "永続", desc: "瀕死時に一度だけHP20％回復（層ごと）", effect: { deathSavePct: 0.20 } },
+  { id:38, name: "光る石", type: "使用", desc: "次の戦闘で敵の属性を事前に表示", effect: { revealAttr: true } },
+  { id:39, name: "静寂の鈴", type: "使用", desc: "次の戦闘で敵の攻撃－10％", effect: { enemyAtkPctTemp: -0.10 } },
+  { id:40, name: "血塗れの契約書", type: "使用", desc: "その階層中、攻撃＋20％、被ダメージ＋10％", effect: { atkPctTemp: 0.20, dmgTakenPctTemp: 0.10 } },
+  { id:41, name: "商人の目録", type: "永続", desc: "商人の品揃え＋1枠", effect: { merchantExtraSlot: 1 } },
+  { id:42, name: "宝箱の鍵束", type: "永続", desc: "宝箱の間で報酬＋1枠", effect: { chestExtraSlot: 1 } },
+  { id:43, name: "戦場の記憶", type: "永続", desc: "戦闘勝利時の経験値（内部）＋10％", effect: { expGainPct: 0.10 } },
+  { id:44, name: "古い地図", type: "永続", desc: "マップにボス階層を強調表示", effect: { mapHighlightBoss: true } },
+  { id:45, name: "焚火の灰", type: "永続", desc: "焚火の回復量＋3％", effect: { bonfireHealBonusPct: 0.03 } },
+  { id:46, name: "強化のハンマー", type: "永続", desc: "アイテム強化時の効果上昇＋1％", effect: { upgradeBonusPct: 0.01 } },
+  { id:47, name: "呪詛の瓶", type: "使用", desc: "次の戦闘で敵防御－10％", effect: { enemyDefPctTemp: -0.10 } },
+  { id:48, name: "祝福の水", type: "使用", desc: "次の焚火で回復量＋10％", effect: { bonfireHealTempPct: 0.10 } },
+  { id:49, name: "古い王冠", type: "永続", desc: "ボス撃破時の金貨＋20％", effect: { bossGoldPct: 0.20 } },
+  { id:50, name: "謎の種", type: "付与", desc: "戦闘開始時にランダムで攻撃・防御・回復のいずれか＋10％", effect: { randomStatPct: 0.10 } }
+];
+
+/*** 初期化 ***/
+function initAllies() {
+  gameState.allies = [
+    {
+      id: "A",
+      name: "剣士レオン（攻撃特化）",
+      role: "attack",
+      baseHp: 100,
+      hp: 100,
+      baseAtk: 20,
+      baseDef: 8,
+      baseHeal: 3,
+      attr: null,
+      attrPower: 0,
+      augments: [], // 付与アイテム
+      deathSaved: false
+    },
+    {
+      id: "B",
+      name: "盾兵ガルド（防御特化）",
+      role: "defense",
+      baseHp: 120,
+      hp: 120,
+      baseAtk: 12,
+      baseDef: 16,
+      baseHeal: 2,
+      attr: null,
+      attrPower: 0,
+      augments: [],
+      deathSaved: false
+    },
+    {
+      id: "C",
+      name: "司祭ミリア（回復特化）",
+      role: "heal",
+      baseHp: 90,
+      hp: 90,
+      baseAtk: 10,
+      baseDef: 7,
+      baseHeal: 8,
+      attr: null,
+      attrPower: 0,
+      augments: [],
+      deathSaved: false
+    }
+  ];
+}
+
+function log(msg) {
+  const logEl = document.getElementById("log");
+  const line = document.createElement("div");
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateDungeonInfo() {
+  const info = document.getElementById("dungeonInfo");
+  const layerInfo = LAYER_THEMES[gameState.layer - 1];
+  const floorDisplay = (gameState.layer === 5) ? `階層: ボス(${gameState.floor}/1)` : `階層: ${gameState.floor}/10`;
+  info.textContent = `${layerInfo.name}　層: ${gameState.layer}/5　${floorDisplay}　金貨: ${Math.floor(gameState.gold)}　呪い: ${curseName(gameState.curse)}`;
+  document.getElementById("game").className = layerInfo.class;
+}
+
+function curseName(c) {
+  if (c === "soul") return "魂の渇望";
+  if (c === "death") return "死恐怖症";
+  if (c === "gold") return "黄金の呪い";
+  return "未選択";
+}
+
+function applyCurseStats(base, role) {
+  let atk = base.baseAtk;
+  let def = base.baseDef;
+  let heal = base.baseHeal;
+  if (gameState.curse === "soul") {
+    atk *= 1.15;
+    def *= 0.90;
+  } else if (gameState.curse === "death") {
+    atk *= 0.75;
+    def *= 1.10;
+    heal *= 1.10;
+  }
+  // 黄金の呪いはステータスに影響なし
+  return { atk, def, heal };
+}
+
+function updateAlliesUI() {
+  const list = document.getElementById("allyList");
+  list.innerHTML = "";
+  gameState.allies.forEach(a => {
+    const div = document.createElement("div");
+    div.className = "ally";
+    const stats = applyCurseStats(a, a.role);
+    const attrClass = a.attr === "fire" ? "attr-fire" : a.attr === "water" ? "attr-water" : a.attr === "grass" ? "attr-grass" : "";
+    div.innerHTML = `
+      <div><b>${a.name}</b></div>
+      <div>HP: ${Math.floor(a.hp)}/${a.baseHp}</div>
+      <div>攻:${Math.floor(stats.atk)} 防:${Math.floor(stats.def)} 回:${Math.floor(stats.heal)}</div>
+      <div>属性: <span class="${attrClass}">${a.attr ? attrLabel(a.attr) + " +" + a.attrPower : "無属性"}</span></div>
+      <div>付与アイテム: ${a.augments.map(id => ITEMS.find(it => it.id === id).name).join(" / ") || "なし"}</div>
+      <div class="hpBarOuter"><div class="hpBarInner" style="width:${Math.max(0, a.hp / a.baseHp * 100)}%;"></div></div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function attrLabel(attr) {
+  if (attr === "fire") return "火";
+  if (attr === "water") return "水";
+  if (attr === "grass") return "草";
+  return "無";
+}
+
+function updateEnemiesUI() {
+  const list = document.getElementById("enemyList");
+  list.innerHTML = "";
+
+  // HPが0以下の敵は表示しない
+  const aliveEnemies = gameState.enemies.filter(e => e.hp > 0);
+
+  aliveEnemies.forEach(e => {
+    const div = document.createElement("div");
+    div.className = "enemy";
+
+    const attrClass =
+      e.attr === "fire" ? "attr-fire" :
+      e.attr === "water" ? "attr-water" :
+      e.attr === "grass" ? "attr-grass" : "";
+
+    div.innerHTML = `
+      <div><b>${e.name}</b></div>
+      <div>HP: ${Math.floor(e.hp)}/${Math.floor(e.maxHp)}</div>
+      <div>攻:${Math.floor(e.atk)} 防:${Math.floor(e.def)}</div>
+      <div>属性: <span class="${attrClass}">${attrLabel(e.attr)}</span></div>
+      <div class="hpBarOuter">
+        <div class="hpBarInner" style="width:${Math.max(0, e.hp / e.maxHp * 100)}%;"></div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+
+function updateInventoryUI() {
+  const inv = document.getElementById("inventory");
+  inv.innerHTML = "";
+
+  if (gameState.inventory.length === 0) {
+    inv.textContent = "アイテムなし";
+    return;
+  }
+
+  gameState.inventory.forEach(entry => {
+    const item = ITEMS.find(it => it.id === entry.id);
+    const div = document.createElement("div");
+    div.className = "itemEntry";
+
+    div.innerHTML = `
+      <b>${item.name}</b> <span class="type">[${item.type}]</span> x${entry.count}<br>
+      ${item.desc}
+    `;
+
+    // 付与アイテムなら「付与」ボタンを追加
+    if (item.type === "付与") {
+      const btn = document.createElement("button");
+      btn.textContent = "付与する";
+      btn.style.marginTop = "4px";
+      btn.onclick = () => openAugmentDialog(item);
+      div.appendChild(btn);
+    }
+
+    inv.appendChild(div);
+  });
+}
+function openAugmentDialog(item) {
+  const body = `
+    <p><b>${item.name}</b> を誰に付与しますか？</p>
+    <p>※各キャラは付与アイテムを3つまで持てます。</p>
+    <ul>
+      ${gameState.allies.map(a => `
+        <li>${a.name}（現在: ${a.augments.length}/3）</li>
+      `).join("")}
+    </ul>
+  `;
+
+  const buttons = gameState.allies.map(a => ({
+    label: a.name,
+    onClick: () => applyAugmentToAlly(item, a)
+  }));
+
+  buttons.push({ label: "キャンセル", onClick: () => {} });
+
+  showDialog("付与アイテム", body, buttons);
+}
+function applyAugmentToAlly(item, ally) {
+  // 3つ以上なら付与できない
+  if (ally.augments.length >= 3) {
+    log(`${ally.name}は付与アイテムが3つまでです。`);
+    return;
+  }
+
+  // インベントリから1つ消費
+  const inv = gameState.inventory.find(e => e.id === item.id);
+  if (!inv || inv.count <= 0) {
+    log("アイテムがありません。");
+    return;
+  }
+  inv.count--;
+  if (inv.count === 0) {
+    gameState.inventory = gameState.inventory.filter(e => e.id !== item.id);
+  }
+
+  // キャラに付与
+  ally.augments.push(item.id);
+
+  // 属性付与アイテムなら属性をセット
+  if (item.effect.attr) {
+    ally.attr = item.effect.attr;
+    ally.attrPower = item.effect.power;
+  }
+
+  log(`${ally.name}に「${item.name}」を付与した！`);
+
+  updateInventoryUI();
+  updateAlliesUI();
+}
+
+
+function updateStatusInfo() {
+  const el = document.getElementById("statusInfo");
+  el.innerHTML = `
+    呪い: ${curseName(gameState.curse)}<br>
+    永続効果数: ${gameState.permanentEffects.length}<br>
+    戦闘状態: ${gameState.battle.inBattle ? "戦闘中" : "非戦闘"}<br>
+  `;
+}
+
+function buildMapUI() {
+  const grid = document.getElementById("mapGrid");
+  grid.innerHTML = "";
+  const maxFloor = (gameState.layer === 5) ? 1 : 10;
+  for (let f = 1; f <= maxFloor; f++) {
+    const cell = document.createElement("div");
+    cell.className = "mapCell";
+    if (f === gameState.floor) cell.classList.add("current");
+    if (f === maxFloor) cell.classList.add("boss");
+    cell.textContent = `${f}階`;
+    grid.appendChild(cell);
+  }
+}
+
+/*** 呪い選択ダイアログ ***/
+function showCurseSelect() {
+  const overlay = document.getElementById("curseSelectOverlay");
+  overlay.style.display = "flex";
+  overlay.querySelectorAll(".dialogButton").forEach(btn => {
+    btn.onclick = () => {
+      gameState.curse = btn.dataset.curse;
+      overlay.style.display = "none";
+      log(`呪い「${curseName(gameState.curse)}」が付与された。`);
+      startLayer(1);
+    };
+  });
+}
+
+/*** 汎用ダイアログ ***/
+function showDialog(title, bodyHtml, buttons) {
+  const overlay = document.getElementById("dialogOverlay");
+  document.getElementById("dialogTitle").textContent = title;
+  document.getElementById("dialogBody").innerHTML = bodyHtml;
+  const btnArea = document.getElementById("dialogButtons");
+  btnArea.innerHTML = "";
+  buttons.forEach(b => {
+    const btn = document.createElement("button");
+    btn.className = "dialogButton";
+    btn.textContent = b.label;
+    btn.onclick = () => {
+      overlay.style.display = "none";
+      b.onClick && b.onClick();
+    };
+    btnArea.appendChild(btn);
+  });
+  overlay.style.display = "flex";
+}
+
+/*** 層開始・進行 ***/
+function startLayer(layer) {
+  gameState.layer = layer;
+  gameState.floor = 1;
+  log(`=== ${LAYER_THEMES[layer - 1].name} に突入 ===`);
+  updateDungeonInfo();
+  buildMapUI();
+  updateAlliesUI();
+  updateInventoryUI();
+  updateStatusInfo();
+  showRoomSelection();
+}
+
+function nextFloor() {
+  const maxFloor = (gameState.layer === 5) ? 1 : 10;
+  if (gameState.floor >= maxFloor) {
+    if (gameState.layer < gameState.maxLayer) {
+      gameState.layer++;
+      startLayer(gameState.layer);
+    } else {
+      log("全ての層を踏破した！ゲームクリア！");
+      showDialog("クリア", "<p>おめでとう！5層41階建てのダンジョンを制覇した。</p>", [
+        { label: "もう一度", onClick: () => location.reload() }
+      ]);
+    }
+  } else {
+    gameState.floor++;
+    buildMapUI();
+    updateDungeonInfo();
+    showRoomSelection();
+  }
+}
+
+/*** 間選択 ***/
+function showRoomSelection() {
+  const desc = document.getElementById("currentRoomDesc");
+  const choices = document.getElementById("roomChoices");
+  const maxFloor = (gameState.layer === 5) ? 1 : 10;
+  if (gameState.floor === maxFloor) {
+    desc.textContent = "ボスステージ：強力な敵が待ち構えている。";
+    choices.innerHTML = "";
+    const btn = document.createElement("button");
+    btn.className = "roomButton";
+    btn.textContent = "ボス戦開始";
+    btn.onclick = () => startBattle(true);
+    choices.appendChild(btn);
+    return;
+  }
+
+  desc.textContent = "次に進む間を選択してください。最大3つがランダムに出現します。";
+  choices.innerHTML = "";
+  const numChoices = 1 + Math.floor(Math.random() * 3); // 1〜3
+  const rooms = [];
+  for (let i = 0; i < numChoices; i++) {
+    const type = ROOM_TYPES[Math.floor(Math.random() * ROOM_TYPES.length)];
+    rooms.push(type);
+  }
+  rooms.forEach(type => {
+    const btn = document.createElement("button");
+    btn.className = "roomButton";
+    btn.textContent = type + "の間";
+    btn.onclick = () => enterRoom(type);
+    choices.appendChild(btn);
+  });
+}
+
+function enterRoom(type) {
+  log(`「${type}の間」に入った。`);
+  if (type === "戦闘") {
+    startBattle(false);
+  } else if (type === "焚火") {
+    bonfireRoom();
+  } else if (type === "商人") {
+    merchantRoom();
+  } else if (type === "宝箱") {
+    chestRoom();
+  }
+}
+
+/*** 戦闘生成 ***/
+function generateEnemies(isBoss) {
+  const enemies = [];
+  const count = isBoss ? 3 : (2 + Math.floor(Math.random() * 3));
+
+  for (let i = 0; i < count; i++) {
+    const lv = (gameState.layer - 1) * 10 + gameState.floor;
+
+    // 序盤は極端に弱い
+    const scale = Math.pow(lv, 0.6); // ← 弱めの成長式
+
+    const maxHp = (isBoss ? 120 : 40) + scale * 2;
+    const atk = (isBoss ? 15 : 5) + scale * 0.4;
+    const def = (isBoss ? 8 : 2) + scale * 0.2;
+
+    enemies.push({
+      name: isBoss ? `層${gameState.layer}のボス` : `敵${i + 1}`,
+      maxHp,
+      hp: maxHp,
+      atk,
+      def,
+      attr: ATTRS[Math.floor(Math.random() * ATTRS.length)]
+    });
+  }
+  return enemies;
+}
+
+/*** 自動戦闘ループ（1秒間隔攻撃＋コマンド割り込み） ***/
+
+function startBattle(isBoss) {
+  gameState.enemies = generateEnemies(isBoss);
+  gameState.battle.inBattle = true;
+  gameState.battle.lastCommand = "attack";
+  gameState.battle.defendBuff = false;
+
+  updateEnemiesUI();
+  updateAlliesUI();
+  log(isBoss ? "ボス戦開始！" : "敵が現れた！");
+
+  startAutoBattleLoop();
+}
+
+/*** 自動戦闘ループ ***/
+function startAutoBattleLoop() {
+  // 1秒ごとに通常攻撃
+  gameState.battle.autoLoop = setInterval(() => {
+    if (!gameState.battle.inBattle) {
+      clearInterval(gameState.battle.autoLoop);
+      return;
+    }
+    autoAttackTick();
+  }, 1000);
+
+  // 5〜7秒ごとにコマンド選択フェーズ
+  openCommandWindow();
+}
+
+/*** 通常攻撃処理（1秒ごと） ***/
+function autoAttackTick() {
+  const allies = gameState.allies;
+  const enemies = gameState.enemies;
+
+  // 味方平均ステータス
+  let atk = 0, def = 0;
+  allies.forEach(a => {
+    const s = applyCurseStats(a, a.role);
+    atk += s.atk;
+    def += s.def;
+  });
+  atk /= allies.length;
+  def /= allies.length;
+
+  // 敵平均ステータス
+  let eatk = 0, edef = 0;
+  enemies.forEach(e => {
+    eatk += e.atk;
+    edef += e.def;
+  });
+  eatk /= enemies.length;
+  edef /= enemies.length;
+
+  // 味方 → 敵
+  const dmgToEnemy = Math.max(1, atk - edef);
+  enemies.forEach(e => {
+    e.hp -= dmgToEnemy;
+  });
+  log(`味方の通常攻撃！敵に${Math.floor(dmgToEnemy)}ダメージ`);
+
+  // 敵 → 味方
+  let dmgToAlly = Math.max(1, eatk - def);
+
+  // 防御コマンドが有効なら軽減
+  if (gameState.battle.defendBuff) {
+    dmgToAlly *= 0.25;
+    gameState.battle.defendBuff = false;
+  }
+
+  const per = dmgToAlly / allies.length;
+  allies.forEach(a => {
+    a.hp -= per;
+    if (a.hp <= 0) handleAllyNearDeath(a);
+  });
+  log(`敵の通常攻撃！味方に${Math.floor(dmgToAlly)}ダメージ`);
+
+  updateEnemiesUI();
+  updateAlliesUI();
+
+  // 戦闘終了判定
+  checkBattleEnd();
+}
+
+/*** コマンド選択フェーズ ***/
+function openCommandWindow() {
+  if (!gameState.battle.inBattle) return;
+
+  const delay = 5000 + Math.floor(Math.random() * 2000); // 5〜7秒
+  setTimeout(() => {
+    if (!gameState.battle.inBattle) return;
+
+    gameState.battle.commandWindowOpen = true;
+    const now = Date.now();
+    gameState.battle.commandDeadline = now + 5000;
+
+    document.getElementById("commandTimer").textContent =
+      "コマンド選択フェーズ：5秒以内に選んでください";
+
+    log("コマンド選択フェーズ開始！");
+
+    startCommandCountdown();
+  }, delay);
+}
+
+/*** コマンドタイマー ***/
+function startCommandCountdown() {
+  const timerEl = document.getElementById("commandTimer");
+
+  if (gameState.battle.commandTimer) clearInterval(gameState.battle.commandTimer);
+
+  gameState.battle.commandTimer = setInterval(() => {
+    if (!gameState.battle.commandWindowOpen) {
+      clearInterval(gameState.battle.commandTimer);
+      return;
+    }
+
+    const remaining = gameState.battle.commandDeadline - Date.now();
+    if (remaining <= 0) {
+      clearInterval(gameState.battle.commandTimer);
+      gameState.battle.commandWindowOpen = false;
+
+      log("時間切れ！前回のコマンドを使用します。");
+      resolveCommand(gameState.battle.lastCommand);
+    } else {
+      timerEl.textContent = `残り時間: ${(remaining / 1000).toFixed(1)}秒`;
+    }
+  }, 100);
+}
+
+/*** コマンドボタン処理 ***/
+document.querySelectorAll(".commandButton").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (!gameState.battle.commandWindowOpen) return;
+
+    const cmd = btn.dataset.cmd;
+    gameState.battle.commandWindowOpen = false;
+    gameState.battle.lastCommand = cmd;
+
+    resolveCommand(cmd);
+  });
+});
+
+/*** コマンド効果 ***/
+function resolveCommand(cmd) {
+  const allies = gameState.allies;
+  const enemies = gameState.enemies;
+
+  if (cmd === "attack") {
+    const atk = allies.reduce((acc, a) => acc + applyCurseStats(a, a.role).atk, 0) / allies.length;
+    const dmg = atk * 2;
+    enemies.forEach(e => e.hp -= dmg);
+    log(`あなたの強攻撃！敵に${Math.floor(dmg)}ダメージ`);
+  }
+
+  if (cmd === "defend") {
+    gameState.battle.defendBuff = true;
+    log("あなたは防御態勢を取った（次の敵攻撃75%軽減）");
+  }
+
+  if (cmd === "heal") {
+    allies.forEach(a => {
+      a.hp = Math.min(a.baseHp, a.hp + a.baseHp * 0.07);
+    });
+    log("あなたは味方を回復した（HP7%）");
+  }
+
+  updateEnemiesUI();
+  updateAlliesUI();
+
+  checkBattleEnd();
+
+  // 次のコマンドフェーズへ
+  if (gameState.battle.inBattle) openCommandWindow();
+}
+
+/*** 瀕死処理（付与アイテム剥奪） ***/
+function handleAllyNearDeath(a) {
+  if (a.hp > 0) return;
+
+  if (a.augments.length > 0) {
+    const idx = Math.floor(Math.random() * a.augments.length);
+    const removed = a.augments.splice(idx, 1)[0];
+    const item = ITEMS.find(it => it.id === removed);
+    log(`${a.name}は瀕死になり、付与アイテム「${item.name}」が外れた！`);
+  }
+
+  // 死亡セーブ
+  const save = gameState.permanentEffects.find(e => e.deathSavePct);
+  if (save && !a.deathSaved) {
+    a.hp = a.baseHp * save.deathSavePct;
+    a.deathSaved = true;
+    log(`${a.name}は死の淵から蘇った！`);
+  }
+}
+
+/*** 戦闘終了判定 ***/
+function checkBattleEnd() {
+  const allies = gameState.allies;
+  const enemies = gameState.enemies;
+
+  if (enemies.every(e => e.hp <= 0)) {
+    log("戦闘勝利！");
+    gameState.battle.inBattle = false;
+    clearInterval(gameState.battle.autoLoop);
+    rewardAfterBattle();
+    return;
+  }
+
+  if (allies.every(a => a.hp <= 0)) {
+    log("全滅した……");
+    gameState.battle.inBattle = false;
+    clearInterval(gameState.battle.autoLoop);
+    showDialog("ゲームオーバー", "<p>全滅しました。</p>", [
+      { label: "最初から", onClick: () => location.reload() }
+    ]);
+  }
+}
+
+
+/*** 戦闘報酬 ***/
+function rewardAfterBattle() {
+  // 金貨獲得
+  let baseGold = 20 + gameState.layer * 5 + gameState.floor * 2;
+  const goldBonus = gameState.permanentEffects.reduce((acc, eff) => acc + (eff.goldGainPct || 0), 0);
+  if (gameState.curse === "gold") {
+    baseGold *= 1.05;
+  }
+  gameState.gold += baseGold * (1 + goldBonus);
+  log(`金貨を${Math.floor(baseGold * (1 + goldBonus))}枚獲得した。`);
+
+  // アイテム3つから1つ選択
+  const choices = [];
+  while (choices.length < 3) {
+    const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    choices.push(item);
+  }
+  const body = choices.map((it, idx) => `<p>${idx + 1}. <b>${it.name}</b> [${it.type}] - ${it.desc}</p>`).join("");
+  showDialog("戦闘報酬", `<p>以下のアイテムから1つ選んで獲得してください。</p>${body}`, choices.map(it => ({
+    label: it.name,
+    onClick: () => {
+      addItemToInventory(it.id, 1);
+      updateInventoryUI();
+      nextFloor();
+    }
+  })));
+}
+
+/*** 焚火の間 ***/
+function bonfireRoom() {
+  const healBase = 0.10;
+  const bonus = gameState.permanentEffects.reduce((acc, eff) => acc + (eff.bonfireHealBonusPct || 0), 0);
+  const body = `
+    <p>焚火の暖かさがパーティを包む。</p>
+    <p>行動を選択してください：</p>
+    <ul>
+      <li>味方キャラ3体のHPを${Math.round((healBase + bonus) * 100)}％回復</li>
+      <li>アイテムを1段階強化（ランダムな所持アイテム）</li>
+    </ul>
+  `;
+  showDialog("焚火の間", body, [
+    {
+      label: "HP回復",
+      onClick: () => {
+        gameState.allies.forEach(a => {
+          a.hp = Math.min(a.baseHp, a.hp + a.baseHp * (healBase + bonus));
+        });
+        log("焚火でパーティのHPが回復した。");
+        updateAlliesUI();
+        nextFloor();
+      }
+    },
+{
+  label: "アイテム強化",
+  onClick: () => {
+    if (gameState.inventory.length === 0) {
+      log("強化できるアイテムがない。");
+      nextFloor();
+      return;
+    }
+
+    // ランダムな所持アイテムを選ぶ
+    const idx = Math.floor(Math.random() * gameState.inventory.length);
+    const entry = gameState.inventory[idx];
+    const item = ITEMS.find(it => it.id === entry.id);
+
+    // 強化処理：effect 内の数値を 1.1倍する
+    for (const key in item.effect) {
+      if (typeof item.effect[key] === "number") {
+        item.effect[key] *= 1.1;   // ← ここが本物の強化！
+      }
+    }
+
+    log(`「${item.name}」の効果が 110％ に強化された！`);
+    updateInventoryUI();
+    nextFloor();
+  }
+}
+
+  ]);
+}
+
+/*** 商人の間 ***/
+function merchantRoom() {
+  // 最大6種のランダムアイテム
+  const slotsBase = 6;
+  const extraSlots = gameState.permanentEffects.reduce((acc, eff) => acc + (eff.merchantExtraSlot || 0), 0);
+  const slots = Math.min(8, slotsBase + extraSlots);
+  const items = [];
+  while (items.length < slots) {
+    const it = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    if (!items.includes(it)) items.push(it);
+  }
+  const discount = gameState.permanentEffects.reduce((acc, eff) => acc + (eff.merchantDiscountPct || 0), 0);
+  const bodyParts = items.map((it, idx) => {
+    const priceBase = 40 + it.id * 2;
+    const price = Math.floor(priceBase * (1 - discount));
+    return `<p>${idx + 1}. <b>${it.name}</b> [${it.type}] - ${it.desc}<br>価格: ${price}金貨</p>`;
+  }).join("");
+  const buttons = items.map(it => {
+    const priceBase = 40 + it.id * 2;
+    const price = Math.floor(priceBase * (1 - discount));
+    return {
+      label: `${it.name}を買う`,
+      onClick: () => {
+        if (gameState.gold >= price) {
+          gameState.gold -= price;
+          addItemToInventory(it.id, 1);
+          log(`商人から「${it.name}」を購入した。`);
+          updateInventoryUI();
+          updateDungeonInfo();
+        } else {
+          log("金貨が足りない。");
+        }
+        nextFloor();
+      }
+    };
+  });
+  buttons.push({ label: "何も買わない", onClick: () => nextFloor() });
+  showDialog("商人の間", `<p>商人が品物を並べている。</p>${bodyParts}`, buttons);
+}
+
+/*** 宝箱の間 ***/
+function chestRoom() {
+  const extra = gameState.permanentEffects.reduce((acc, eff) => acc + (eff.chestExtraSlot || 0), 0);
+  const numChoices = 3 + extra;
+  const choices = [];
+  while (choices.length < numChoices) {
+    const it = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    choices.push(it);
+  }
+  const body = choices.map((it, idx) => `<p>${idx + 1}. <b>${it.name}</b> [${it.type}] - ${it.desc}</p>`).join("");
+  showDialog("宝箱の間", `<p>宝箱が開き、アイテムが現れた。1つ選んで獲得してください。</p>${body}`, choices.map(it => ({
+    label: it.name,
+    onClick: () => {
+      addItemToInventory(it.id, 1);
+      updateInventoryUI();
+      nextFloor();
+    }
+  })));
+}
+
+/*** インベントリ操作 ***/
+function addItemToInventory(id, count) {
+  const existing = gameState.inventory.find(e => e.id === id);
+  if (existing) existing.count += count;
+  else gameState.inventory.push({ id, count });
+}
+
+/*** ゲーム開始 ***/
+function startGame() {
+  initAllies();
+  updateDungeonInfo();
+  buildMapUI();
+  updateAlliesUI();
+  updateEnemiesUI();
+  updateInventoryUI();
+  updateStatusInfo();
+  showCurseSelect();
+}
+
+startGame();
+</script>
+</body>
+</html>
