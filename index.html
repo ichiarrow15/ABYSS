@@ -759,6 +759,23 @@ function nextFloor() {
     showRoomSelection();
   }
 }
+  function weightedRoom() {
+  const rooms = [
+    { type: "戦闘", weight: 7 },
+    { type: "焚火", weight: 1 },
+    { type: "宝箱", weight: 1 },
+    { type: "商人", weight: 1 }
+  ];
+
+  const total = rooms.reduce((acc, r) => acc + r.weight, 0);
+  let rnd = Math.random() * total;
+
+  for (const r of rooms) {
+    if (rnd < r.weight) return r.type;
+    rnd -= r.weight;
+  }
+}
+
 
 /*** 間選択 ***/
 function showRoomSelection() {
@@ -781,8 +798,9 @@ function showRoomSelection() {
   const numChoices = 1 + Math.floor(Math.random() * 3); // 1〜3
   const rooms = [];
   for (let i = 0; i < numChoices; i++) {
-    const type = ROOM_TYPES[Math.floor(Math.random() * ROOM_TYPES.length)];
-    rooms.push(type);
+const type = weightedRoom();
+rooms.push(type);
+
   }
   rooms.forEach(type => {
     const btn = document.createElement("button");
