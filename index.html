@@ -978,6 +978,7 @@ document.querySelectorAll(".commandButton").forEach(btn => {
 
 /*** コマンド効果 ***/
 function resolveCommand(cmd) {
+   if (!gameState.battle.inBattle) return;  // ← これだけで事故防止
   const allies = gameState.allies;
   const enemies = gameState.enemies;
 
@@ -1035,12 +1036,25 @@ function checkBattleEnd() {
   const enemies = gameState.enemies;
 
   if (enemies.every(e => e.hp <= 0)) {
+
     log("戦闘勝利！");
     gameState.battle.inBattle = false;
-    clearInterval(gameState.battle.autoLoop);
+
+    // ★★★ ここが重要 ★★★
+    gameState.battle.commandWindowOpen = false;
+    if (gameState.battle.commandTimer) {
+        clearInterval(gameState.battle.commandTimer);
+        gameState.battle.commandTimer = null;
+    }
+    if (gameState.battle.autoLoop) {
+        clearInterval(gameState.battle.autoLoop);
+        gameState.battle.autoLoop = null;
+    }
+
     rewardAfterBattle();
     return;
-  }
+}
+
 
   if (allies.every(a => a.hp <= 0)) {
     log("全滅した……");
